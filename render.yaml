@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: kizilay-kan-bagisi
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: SITE_SESSION_SECRET
+        generateValue: true
+      # Aşağıdakileri Render panelinden (Environment sekmesi) elle ekleyin:
+      # DISCORD_TOKEN, CHANNEL_ID, API_KEY, ENCRYPTION_KEY,
+      # KAYIT_PASSWORD, KONTROL_PASSWORD, YONETIM_PASSWORD

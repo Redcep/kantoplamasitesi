@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giriş - Kan Bağışı Sistemi</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#f5f6f8;font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#202631}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+    .card{background:white;border:1px solid #e5e7eb;border-radius:15px;padding:24px;width:100%;max-width:380px;box-shadow:0 10px 30px rgba(0,0,0,.04)}
+    h1{margin:0 0 6px;font-size:22px;text-align:center}
+    .muted{color:#69717d;font-size:13px;margin-bottom:18px;text-align:center}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+    label{font-size:13px;font-weight:700}
+    input,select{width:100%;padding:11px 12px;border:1px solid #d9dde3;border-radius:9px;font:inherit}
+    .btn{width:100%;border:1px solid #a7192d;background:#a7192d;color:white;border-radius:10px;padding:11px 14px;cursor:pointer;font:inherit;font-weight:700}
+    .err{color:#c32d43;font-size:13px;margin-top:10px;display:none;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Kan Bağışı Sistemi</h1>
+      <div class="muted">Giriş yapın</div>
+      <form id="loginForm" onsubmit="return false;">
+        <div class="field">
+          <label>Şifre</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label>Giriş Yeri</label>
+          <select id="loginType">
+            <option value="kayit">Kayıt Ekibi</option>
+            <option value="kontrol">Kontrol Ekibi</option>
+            <option value="yonetim">Yönetim</option>
+          </select>
+        </div>
+        <button class="btn" type="button" id="loginBtn">Giriş Yap</button>
+        <div class="err" id="err">Hatalı şifre</div>
+      </form>
+    </div>
+  </div>
+  <script src="jquery.min.js"></script>
+  <script>
+    $("#password").on("keydown",function(e){ if(e.key==="Enter") $("#loginBtn").click(); });
+    $("#loginBtn").click(function(){
+      $("#err").hide();
+      $.ajax({url:"/site/login", type:"POST", contentType:"application/json", data:JSON.stringify({password:$("#password").val(), role:$("#loginType").val()})}).done(function(){
+        window.location.href="index.html";
+      }).fail(function(x){ var m=(x.responseJSON&&x.responseJSON.error)||"Hatalı şifre"; $("#err").text(m).show(); });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Yerel çalıştırma için:  docker compose up --build
+# http://localhost:3000/login.html
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
