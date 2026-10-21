@@ -28,6 +28,7 @@ Render panelinde servisin **Environment** sekmesine şu anahtarları ekleyin
 | `KAYIT_PASSWORD` | Evet* | Kayıt ekibi şifresi |
 | `KONTROL_PASSWORD` | Evet* | Kontrol ekibi şifresi |
 | `YONETIM_PASSWORD` | Evet* | Yönetim şifresi |
+| `VISITOR_DELETE_PASSWORD` | Hayır | Kayıt/Kontrol ekibinin kayıt silerken gireceği şifre (boşsa `SITE_PASSWORD`) |
 
 \* Boş bırakılırsa `SITE_PASSWORD` kullanılır. Biri tanımlı değilse varsayılan `demo123` olur — mutlaka tanımlayın.
 

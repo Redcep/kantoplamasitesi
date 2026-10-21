@@ -240,7 +240,36 @@ function renderVisitors(data) {
 }
 $("#search").off("input").on("input", function () { searchValue = $(this).val(); renderVisitors(visitors); });
 $("#filterSchool").off("change").on("change", function () { filterSchoolValue = $(this).val(); renderVisitors(visitors); });
-function entryOnDelete() { if (!confirm("Silinsin mi?")) return; post("/site/visitor/delete", { id: $(this).data("id") }).done(function () { updateAll(); loadControl(true); }); }
+function entryOnDelete() {
+  var id = $(this).data("id");
+  if (!confirm("Silinsin mi?")) return;
+  if (role === "yonetim") { post("/site/visitor/delete", { id: id }).done(function () { updateAll(); loadControl(true); }); return; }
+  askDeletePassword(function (pw) {
+    post("/site/visitor/delete", { id: id, password: pw }).done(function () { updateAll(); loadControl(true); })
+      .fail(function (x) { alert((x.responseJSON && x.responseJSON.error) || "Silinemedi"); });
+  });
+}
+// Kayıt/Kontrol ekibi silerken şifre sor
+function askDeletePassword(cb) {
+  $("#modalTitle").text("Silme onayı · Şifre");
+  $("#modalInput").val("").attr({ type: "password", placeholder: "Şifrenizi girin", autocomplete: "current-password" });
+  $("#modalErr").hide(); $("#modalOk").text("Sil").prop("disabled", false);
+  $("#modal").css("display", "flex"); setTimeout(function () { $("#modalInput").focus(); }, 30);
+  function close() { $("#modal").hide(); $("#modalOk,#modalCancel,#modalInput").off(".dlg"); $(document).off("keydown.dlg"); }
+  function submit() {
+    var v = String($("#modalInput").val());
+    if (!v) { $("#modalErr").text("Şifre boş bırakılamaz").show(); return; }
+    $("#modalOk").prop("disabled", true);
+    post("/site/verify-password", { password: v }).done(function () { close(); cb(v); }).fail(function (x) {
+      $("#modalOk").prop("disabled", false);
+      $("#modalErr").text((x && x.responseJSON && x.responseJSON.error) || "Geçersiz şifre").show();
+    });
+  }
+  $("#modalOk").on("click.dlg", submit);
+  $("#modalCancel").on("click.dlg", close);
+  $("#modalInput").on("keydown.dlg", function (e) { if (e.key === "Enter") submit(); });
+  $(document).on("keydown.dlg", function (e) { if (e.key === "Escape") close(); });
+}
 function entryOnStatusChange() { post("/site/visitor/status", { id: $(this).data("id"), status: $(this).val() }).done(function () { updateAll(); loadControl(true); }); }
 
 function updateFilterSchool() {

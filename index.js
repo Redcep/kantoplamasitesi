@@ -41,6 +41,7 @@ const ROLE_PW={
   kontrol:process.env.KONTROL_PASSWORD||process.env.SITE_PASSWORD||'demo123',
   yonetim:process.env.YONETIM_PASSWORD||process.env.SITE_PASSWORD||'demo123'
 };
+const VISITOR_DELETE_PASSWORD=process.env.VISITOR_DELETE_PASSWORD||process.env.SITE_PASSWORD||'demo123';
 const loginLimiter=rateLimit({windowMs:15*60*1000,limit:40,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Çok fazla deneme, biraz bekleyin'}});
 app.post('/site/login',loginLimiter,(req,res)=>{
   const b=req.body||{}; const role=ROLES.includes(b.role)?b.role:null;
@@ -49,6 +50,14 @@ app.post('/site/login',loginLimiter,(req,res)=>{
   req.session.regenerate(err=>{ if(err) return res.status(500).json({ok:false}); req.session.authenticated=true; req.session.role=role; req.session.table=null; res.json({ok:true,role}); });
 });
 app.get('/site/auth/check',(req,res)=>{ if(req.session&&req.session.authenticated) return res.json({ok:true,authenticated:true,role:req.session.role,table:req.session.table||null}); return res.json({ok:true,authenticated:false}); });
+// Silme gibi kritik işlemler için şifre doğrulama (kayıt/kontrol ekibi)
+const verifyLimiter=rateLimit({windowMs:15*60*1000,limit:60,standardHeaders:true,legacyHeaders:false,message:{ok:false,error:'Çok fazla deneme, biraz bekleyin'}});
+app.post('/site/verify-password',verifyLimiter,(req,res)=>{
+  if(!(req.session&&req.session.authenticated)) return res.status(401).json({ok:false,error:'Giriş gerekli'});
+  const pw=String((req.body||{}).password||'');
+  if(pw!==VISITOR_DELETE_PASSWORD) return res.status(401).json({ok:false,error:'Geçersiz şifre'});
+  res.json({ok:true});
+});
 app.post('/site/logout',(req,res)=>{ const t=req.session&&req.session.table; if(t) tableSeen.delete(lc(t)); req.session.destroy(()=>res.json({ok:true})); });
 // ---- Yetki kontrolü: giriş şart, bazı uçlar sadece belirli rollere açık ----
 const RULES=[
@@ -107,7 +116,14 @@ app.post('/site/visitor/status',wrap(async(req,res)=>{ const b=req.body||{}; con
   else if(st==='waiting'){ v.approvedAt=null; v.approvedBy=null; v.tableNo=null; v.assignedAt=null; }
   const r=await db.update(k,v,false); if(!r)return res.status(500).json({ok:false}); res.json({ok:true}); }));
 app.post('/site/control/assign',wrap(async(req,res)=>{ const b=req.body||{}; const id=toInt(b.id); if(isNaN(id))return res.status(400).json({ok:false}); const tn=req.session.table||(req.session.role==='yonetim'?cleanTable(b.tableNo):''); if(!tn)return res.status(400).json({ok:false,error:'Önce masa seçin'}); const k=sk(id); const it=db.read(k); if(!it)return res.status(404).json({ok:false}); const now=Date.now(); const v={...(it.v||{}),id,status:'success',tableNo:tn,approvedBy:req.session.role,assignedAt:(it.v&&it.v.assignedAt)?it.v.assignedAt:now,approvedAt:now}; const r=await db.update(k,v,false); if(!r)return res.status(500).json({ok:false}); res.json({ok:true}); }));
-app.post('/site/visitor/delete',wrap(async(req,res)=>{ const b=req.body||{}; const id=toInt(b.id); if(isNaN(id))return res.status(400).json({ok:false}); const rm=await db.remove(sk(id)); if(!rm)return res.status(404).json({ok:false}); res.json({ok:true}); }));
+app.post('/site/visitor/delete',wrap(async(req,res)=>{ const b=req.body||{}; const id=toInt(b.id); if(isNaN(id))return res.status(400).json({ok:false});
+  // Kayıt/Kontrol ekibi sileceği zaman şifre zorunlu; Yönetim muaf.
+  if(req.session.role!=='yonetim'){
+    const pw=String(b.password||'');
+    if(!pw) return res.status(403).json({ok:false,error:'Silme için şifre gerekli',needPassword:true});
+    if(pw!==VISITOR_DELETE_PASSWORD) return res.status(401).json({ok:false,error:'Geçersiz şifre',needPassword:true});
+  }
+  const rm=await db.remove(sk(id)); if(!rm)return res.status(404).json({ok:false}); res.json({ok:true}); }));
 app.get('/site/export/csv',wrap(async(req,res)=>{ const l=db.list('site:visitor:'); const items=l.map(r=>r.v||{}).sort((a,b)=>(a.id||0)-(b.id||0)); let csv='id,name,school,referrer,class,status,note,ip,tableNo,approvedBy,assignedAt,approvedAt\n'; for(const v of items){ const row=[v.id||'',v.name||'',v.school||'',v.referrer||'',v.class||'',v.status||'',v.note||'',v.ip||'',v.tableNo||'',v.approvedBy||'',v.assignedAt||'',v.approvedAt||''].map(x=>{const s=String(x).replace(/"/g,'""'); if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"'+s+'"'; return s;}); csv+=row.join(',')+'\n'; } res.setHeader('Content-Type','text/csv'); res.setHeader('Content-Disposition','attachment; filename="ziyaretciler.csv"'); res.send(csv); }));
 // ---- Açık masa takibi + eşit dağıtımlı otomatik yönlendirme ----
 const OPEN_MS=60000;                 // kontrol ekibinden 60 sn haber gelmezse masa "kapalı" sayılır
