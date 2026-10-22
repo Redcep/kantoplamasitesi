@@ -41,7 +41,16 @@ main{max-width:1100px;margin:20px auto;padding:0 16px}
 .nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .nav button,.btn{border:1px solid var(--line);background:white;border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;font-weight:600}
 .nav button.active,.btn.primary{background:var(--red);border-color:var(--red);color:white}
-.btn.danger{color:var(--red)}button:hover{filter:brightness(.97)}.page{display:none}
+.btn.danger{color:var(--red)}
+.btn.ok{background:#2e9e57;border-color:#2e9e57;color:white}
+.btn.warn{background:#e0a31a;border-color:#e0a31a;color:#3a2a00}
+/* Kontrol listesi: büyük kayıt no + üç işlem tuşu */
+.entryNo{min-width:92px;text-align:center;background:var(--pale);border-radius:12px;padding:8px 12px}
+.entryNo small{display:block;font-size:10px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.entryNo b{display:block;font-size:34px;line-height:1.05;color:var(--red)}
+.controlActions{display:flex;gap:8px;flex-wrap:wrap}
+body.role-kayit .entryStatus{display:none}
+button:hover{filter:brightness(.97)}.page{display:none}
 .page.active{display:block}
 .intro{margin-bottom:15px}
 .intro h2{margin:0 0 4px;font-size:24px}
@@ -55,6 +64,7 @@ main{max-width:1100px;margin:20px auto;padding:0 16px}
 .badge{display:inline-block;border-radius:30px;padding:4px 9px;font-size:12px;font-weight:700;background:#f0f1f3}
 .badge.success{background:#e5f5e9;color:#21683a}
 .badge.waiting{background:#fff2d6;color:#815600}
+.badge.unable{background:#fff0dc;color:#94570a}
 .badge.failure{background:#f1f1f3;color:#555}
 .entry{padding:13px 0;border-bottom:1px solid #eef0f3}.entry:last-child{border-bottom:0}
 .entry h3{margin:0;font-size:15px}
@@ -62,6 +72,10 @@ main{max-width:1100px;margin:20px auto;padding:0 16px}
 .medal{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--pale);color:var(--red);font-weight:800}
 .rankinfo{flex:1}.rankbar{height:6px;background:#f0f1f3;border-radius:20px;overflow:hidden;margin-top:9px}
 .rankbar span{display:block;height:100%;background:var(--red)}.notice{padding:11px 13px;background:#f0f8f2;color:#21683a;border-radius:9px;margin:10px 0}
+/* Kayıt ekranı: bağışçıya verilecek büyük numara */
+.giveNo{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;background:#f0f8f2;border:1px solid #cde8d4;border-radius:12px;margin:10px 0 14px}
+.giveNo .giveNoLabel{font-size:12px;letter-spacing:.06em;font-weight:800;color:#21683a}
+.giveNo strong{font-size:56px;line-height:1;color:#1f6b3a;font-weight:800}
 .warning{padding:12px;background:var(--pale);color:#6d3540;border-radius:10px;font-size:13px}
 .empty{color:var(--muted);padding:18px 0;text-align:center}
 footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
@@ -69,7 +83,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:22px}
 .chip{display:inline-block;background:rgba(255,255,255,.18);border-radius:20px;padding:4px 10px;font-weight:700;font-size:13px}
 .statusbar{display:flex;height:14px;border-radius:8px;overflow:hidden;background:#eee}
 .statusbar span{display:block;height:100%}
-.seg-success{background:#2e9e57}.seg-waiting{background:#e0a31a}.seg-failure{background:#9aa0a8}
+.seg-success{background:#2e9e57}.seg-waiting{background:#e0a31a}.seg-unable{background:#e08a1a}.seg-failure{background:#9aa0a8}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
 table.tbl{width:100%;border-collapse:collapse}

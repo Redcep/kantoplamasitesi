@@ -56,14 +56,13 @@ function makeSearchable(selEl) {
   }).observe(selEl, { childList: true, subtree: true });
   selEl._ss = { sync: sync }; sync();
 }
-["#referrerSelect", "#schoolSelect", "#classSelect", "#tableSelect", "#filterSchool", "#inSchoolSelect", "#inClassRankingSchoolSelect", "#inClassRankingClassSelect", "#betweenClassRankingSchoolSelect", "#masaSelect"].forEach(function (s) { makeSearchable($(s)[0]); });
+["#referrerSelect", "#schoolSelect", "#classSelect", "#filterSchool", "#inSchoolSelect", "#inClassRankingSchoolSelect", "#inClassRankingClassSelect", "#betweenClassRankingSchoolSelect"].forEach(function (s) { makeSearchable($(s)[0]); });
 // ===== SS-END =====
 
 // ================= Durum =================
 let visitors = [], searchValue = "", filterSchoolValue = "";
-let role = null, currentTable = null;
+let role = null, controlSearch = "";
 let lastVisitorsSig = "", lastControlSig = "";
-let controlChecks = {};
 let referrers = [];   // aracı öğrenciler: sunucudan (şifreli veritabanı)
 let schoolData = [];   // [{name, classes:[]}] — sunucudan (Discord okul kanalları)
 
@@ -72,7 +71,7 @@ const ROLE_HOME = { kayit: "register", kontrol: "control", yonetim: "stats" };
 const ROLE_PAGES = {
   kayit: ["dashboard", "register", "records"],
   kontrol: ["dashboard", "control", "records"],
-  yonetim: ["dashboard", "stats", "yonetim", "records", "ranking", "schoolRanking", "inSchoolRanking", "inClassRanking", "betweenClassRanking"]
+  yonetim: ["dashboard", "stats", "yonetim", "records", "ranking", "donorRanking", "schoolRanking", "inSchoolRanking", "inClassRanking", "betweenClassRanking"]
 };
 
 function post(url, data) {
@@ -173,36 +172,26 @@ function onPageShown(page) {
   if (page === "control") loadControl(true);
   else if (page === "stats") loadStats();
   else if (page === "records") getVisitors(true);
-  else if (page === "register") loadOpenTables();
   else if (page === "dashboard") { updateDashboardStats(); getVisitors(true); }
   else if (page === "ranking") updateStudentsRankings();
+  else if (page === "donorRanking") updateDonorRankings();
   else if (page === "schoolRanking") updateSchoolsRankings();
   else if (page === "inSchoolRanking" || page === "inClassRanking" || page === "betweenClassRanking") updateFilterSchool();
 }
 $(".nav button").off("click").on("click", function () { showPage($(this).data("page")); });
 
 // ================= Yeni kayıt =================
-function loadOpenTables() {
-  if (role !== "kayit" && role !== "yonetim") return;
-  $.getJSON("/site/tables").done(function (list) {
-    var open = (list || []).filter(function (t) { return t.open; });
-    var sel = $("#tableSelect"), cur = sel.val();
-    sel.empty().append($("<option>", { value: "", text: "Otomatik (açık masalara eşit dağıt)" }));
-    open.forEach(function (t) { sel.append($("<option>", { value: t.name, text: t.name + " (" + t.waiting + " bekliyor)" })); });
-    if (cur && open.some(function (t) { return t.name === cur; })) sel.val(cur);
-    $("#openInfo").text(open.length ? "Açık masa: " + open.length + " · " + open.map(function (t) { return t.name + " (" + t.waiting + ")"; }).join(", ") : "Şu an açık masa yok");
-  });
-}
 function entryFormSubmit() {
   var ref = $("#referrerSelect").val(), cls = $("#classSelect").val(), sch = $("#schoolSelect").val();
   if (!$("#name").val()) { alert("Ad Soyad gerekli"); return; }
   if (!sch) { alert("Okul seçiniz"); return; }
   if (!ref) { alert("Aracı öğrenci seçiniz"); return; }
-  var data = { name: $("#name").val().toLocaleLowerCase("tr-TR"), school: String(sch).toLocaleLowerCase("tr-TR"), referrer: String(ref).toLocaleLowerCase("tr-TR"), class: cls || "", table: $("#tableSelect").val(), note: $("#note").val() };
+  var data = { name: $("#name").val().toLocaleLowerCase("tr-TR"), school: String(sch).toLocaleLowerCase("tr-TR"), referrer: String(ref).toLocaleLowerCase("tr-TR"), class: cls || "", note: $("#note").val() };
   post("/site/visitor", data).done(function (r) {
     $("#name").val(""); $("#note").val("");
-    var msg = r.table ? "Kayıt No: " + r.id + " → " + r.table + "'e yönlendirin" : "Kayıt No: " + r.id + " · Şu an açık masa yok, masa açılınca otomatik yönlendirilecek";
-    $("#routeNotice").text(msg).show(); loadOpenTables(); updateAll();
+    $("#givenNo").text(r.id);
+    $("#routeNotice").show();
+    updateAll();
   }).fail(function (x) { alert((x.responseJSON && x.responseJSON.error) || "Kayıt eklenemedi"); });
 }
 $("#entryFormSubmit").off("click").on("click", entryFormSubmit);
@@ -217,7 +206,7 @@ function getVisitors(force) {
     lastVisitorsSig = sig; visitors = data; renderVisitors(visitors);
   });
 }
-function statusText(s) { return s === "waiting" ? "Beklemede" : s === "success" ? "Onaylandı" : "Reddedildi"; }
+function statusText(s) { return s === "waiting" ? "Beklemede" : s === "success" ? "Kan verdi" : s === "unable" ? "Kan veremedi" : "Kan vermedi"; }
 function renderVisitors(data) {
   $("#recordList").empty(); $("#recent").empty();
   var sv = searchValue.toLocaleLowerCase("tr-TR"), shown = 0;
@@ -226,11 +215,10 @@ function renderVisitors(data) {
     if (filterSchoolValue && (v.school || "").toLowerCase() !== filterSchoolValue.toLowerCase()) return;
     var t = $("#templates").find(".recordEntry").clone();
     t.find(".entryName").text(v.name);
-    t.find(".entryMisc").text("Okul: " + v.school + " | Aracı: " + v.referrer + " | Sınıf: " + (v.class || "-") + " | Yönlendirilen: " + (v.assignedTable || "-"));
-    t.find(".badge").removeClass("waiting success failure").addClass(v.status).text(statusText(v.status));
-    t.find(".entryStatus").val(v.status).data("id", v.id).off("change").on("change", entryOnStatusChange);
+    t.find(".entryMisc").text("Kayıt No: " + v.id + " | Okul: " + v.school + " | Aracı: " + v.referrer + " | Sınıf: " + (v.class || "-"));
+    t.find(".badge").removeClass("waiting success unable failure").addClass(v.status).text(statusText(v.status));
+    t.find(".entryStatus").val(v.status).data("id", v.id).toggle(role !== "kayit").off("change").on("change", entryOnStatusChange);
     t.find(".entryNote").text(v.note || "");
-    t.find(".entryTable").text(v.tableNo || "-");
     t.find(".entryApprovedBy").text(v.approvedBy || "-");
     t.find(".entryDelete").data("id", v.id).off("click").on("click", entryOnDelete);
     $("#recordList").append(t);
@@ -281,101 +269,82 @@ function updateFilterSchool() {
 }
 function updateDashboardStats() {
   $.getJSON("/site/stats/dashboard").done(function (d) {
-    $("#total").text(d.visitor_count || 0); $("#done").text(d.success_count || 0); $("#wait").text(d.waiting_count || 0); $("#schools").text(d.school_count || 0);
+    $("#total").text(d.visitor_count || 0); $("#done").text(d.success_count || 0); $("#wait").text(d.waiting_count || 0);
+    $("#unable").text(d.unable_count || 0); $("#notdonated").text(d.failure_count || 0);
+    $("#schools").text(d.school_count || 0);
   });
 }
 function updateAll() {
   updateDashboardStats(); getVisitors(true); refreshSelects();
-  if (role === "yonetim") { updateFilterSchool(); updateStudentsRankings(); updateSchoolsRankings(); if ($("#stats").hasClass("active")) loadStats(); }
+  if (role === "yonetim") { updateFilterSchool(); updateStudentsRankings(); updateDonorRankings(); updateSchoolsRankings(); if ($("#stats").hasClass("active")) loadStats(); }
 }
 
-// ================= Masa seçimi (Kontrol Ekibi) =================
-function loadTables(selectName) {
-  $.getJSON("/site/tables").done(function (list) {
-    var sel = $("#masaSelect"); sel.empty().append($("<option>", { value: "", text: "Masa seçiniz" }));
-    (list || []).forEach(function (t) { sel.append($("<option>", { value: t.name, text: t.name })); });
-    var pick = selectName || currentTable; if (pick) sel.val(pick);
-  });
+// ================= Kontrol ekranı (herkes tek ortak liste) =================
+function controlAction(id, status) {
+  post("/site/visitor/status", { id: id, status: status }).done(function () { updateAll(); loadControl(true); })
+    .fail(function (x) { alert((x.responseJSON && x.responseJSON.error) || "İşlem başarısız"); });
 }
-function showTableGate() {
-  $("#anaEkran").hide(); $("#kontrolGiris").show(); $("#masaErr").hide();
-  $("#masaChip,#masaDegistir").hide();
-  loadTables();
-}
-function gateError(msg) { $("#masaErr").text(msg).show(); }
-$("#masaEkleBtn").on("click", function () {
-  $("#masaErr").hide();
-  openDialog({ title: "Yeni masa", placeholder: "Örn. Masa 1", okText: "Ekle ve Seç", submit: function (v) {
-    return post("/site/tables", { name: v }).done(function (r) { loadTables(r.name); });
-  } });
-});
-$("#masaKaydet").on("click", function () {
-  var name = $("#masaSelect").val(); if (!name) { gateError("Önce bir masa seçin veya ekleyin"); return; }
-  post("/site/control/table", { name: name }).done(function (r) { currentTable = r.table; enterMain(); })
-    .fail(function (x) { gateError((x.responseJSON && x.responseJSON.error) || "Masa seçilemedi"); });
-});
-$("#controlAll").on("change", function () { loadControl(true); });
-$("#masaDegistir").on("click", function () { post("/site/control/table", { name: "" }).done(function () { currentTable = null; lastControlSig = ""; showTableGate(); }); });
-
-// ================= Kontrol ekranı =================
 function loadControl(force) {
   if (role !== "kontrol" && role !== "yonetim") return;
   $.getJSON("/site/visitors").done(function (data) {
-    var all = $("#controlAll").is(":checked");
-    var list = (data || []).filter(function (v) {
-      if (v.status !== "waiting") return false;
-      return all || (v.assignedTable && currentTable && v.assignedTable.toLowerCase() === currentTable.toLowerCase());
-    }).reverse(); // en eski bekleyen en üstte
-    var sig = currentTable + "|" + all + "|" + list.map(function (v) { return v.id + ":" + v.assignedTable; }).join(",");
+    var q = (controlSearch || "").toLocaleLowerCase("tr-TR");
+    var waiting = (data || []).filter(function (v) { return v.status === "waiting"; });
+    var list = waiting.filter(function (v) {
+      if (!q) return true;
+      return String(v.id).indexOf(q) !== -1 ||
+        (v.name || "").toLocaleLowerCase("tr-TR").indexOf(q) !== -1 ||
+        (v.school || "").toLocaleLowerCase("tr-TR").indexOf(q) !== -1 ||
+        (v.referrer || "").toLocaleLowerCase("tr-TR").indexOf(q) !== -1 ||
+        (v.class || "").toLocaleLowerCase("tr-TR").indexOf(q) !== -1;
+    }).sort(function (a, b) { return (a.id || 0) - (b.id || 0); }); // en eski bekleyen en üstte
+    var sig = q + "|" + waiting.length + "|" + list.map(function (v) { return v.id; }).join(",");
     if (!force && sig === lastControlSig) return;
     lastControlSig = sig;
-    $("#masaBilgi").text(currentTable || "-");
     $("#controlList").empty();
-    if (!list.length) { $("#controlList").append("<div class='muted'>" + (all ? "Bekleyen kayıt yok" : "Size yönlendirilmiş bekleyen yok") + "</div>"); return; }
+    if (!list.length) { $("#controlList").append("<div class='muted'>" + (q ? "Aramanızla eşleşen bekleyen kayıt yok" : "Bekleyen kayıt yok") + "</div>"); return; }
     list.forEach(function (item) {
       var t = $("#templates").find(".controlEntry").clone();
+      t.find(".entryId").text(item.id);
       t.find(".entryName").text(item.name);
-      t.find(".entryMisc").text("Kayıt No: " + item.id + " | Okul: " + item.school + " | Aracı: " + item.referrer + " | Yönlendirilen: " + (item.assignedTable || "-"));
+      t.find(".entryMisc").text("Okul: " + item.school + " | Aracı: " + item.referrer + " | Sınıf: " + (item.class || "-"));
       t.find(".entryNote").text(item.note || "");
-      t.find(".entryClass").text(item.class || "-");
-      t.find(".entryMasa").text(currentTable || "-");
-      var st = controlChecks[item.id] || {};
-      t.find(".chkUygun").prop("checked", !!st.uygun).on("change", function () {
-        var on = this.checked;
-        t.find(".verdiWrap").toggle(on);
-        if (!on) t.find(".chkVerdi").prop("checked", false);
-        controlChecks[item.id] = Object.assign({}, controlChecks[item.id], { uygun: on, verdi: on ? (controlChecks[item.id] || {}).verdi : false });
-      });
-      t.find(".verdiWrap").toggle(!!st.uygun);
-      t.find(".chkVerdi").prop("checked", !!st.verdi).on("change", function () { controlChecks[item.id] = Object.assign({}, controlChecks[item.id], { verdi: this.checked }); });
-      t.find(".controlAssign").on("click", function () {
-        if (!currentTable) { alert("Önce masa seçin"); return; }
-        if (!t.find(".chkUygun").is(":checked")) { alert("Kan vermeye uygun seçiniz"); return; }
-        if (!t.find(".chkVerdi").is(":checked")) { alert("Kan verdi seçiniz"); return; }
-        post("/site/control/assign", { id: item.id }).done(function () { delete controlChecks[item.id]; updateAll(); loadControl(true); })
-          .fail(function (x) { alert((x.responseJSON && x.responseJSON.error) || "İşlem başarısız"); });
-      });
-      t.find(".controlReject").on("click", function () {
-        post("/site/visitor/status", { id: item.id, status: "failure" }).done(function () { delete controlChecks[item.id]; updateAll(); loadControl(true); });
-      });
+      t.find(".controlDone").on("click", function () { controlAction(item.id, "success"); });
+      t.find(".controlUnable").on("click", function () { controlAction(item.id, "unable"); });
+      t.find(".controlReject").on("click", function () { controlAction(item.id, "failure"); });
       $("#controlList").append(t);
     });
   });
 }
+var controlSearchTimer = null;
+$("#controlSearch").off("input").on("input", function () {
+  controlSearch = $(this).val();
+  clearTimeout(controlSearchTimer);
+  controlSearchTimer = setTimeout(function () { loadControl(true); }, 200);
+});
 
 // ================= Sıralamalar =================
-function renderRank(container, data, nameKey) {
+function renderRank(container, data, nameKey, opts) {
+  opts = opts || {};
   var box = $(container);
   if (!data || !data.length) { box.html("<div class='muted'>Kayıt yok</div>"); return; }
-  var top = data[0].success_count || 1; box.empty();
+  var metric = opts.bar || "success_count";
+  var top = Math.max.apply(null, data.map(function (d) { return d[metric] || 0; })) || 1;
+  box.empty();
   data.forEach(function (d, i) {
     var t = $("#templates").find(".rankEntry").clone();
-    t.find(".medal").text(i + 1); t.find(".entryName").text(d[nameKey]); t.find(".entryMisc").text("Toplam: " + d.count);
-    t.find(".entryBar").css("width", (d.success_count / top * 100) + "%"); t.find(".entryCount").text(d.success_count);
+    var pct = opts.ratio ? (d.count ? (d.success_count / d.count * 100) : 0) : ((d[metric] || 0) / top * 100);
+    t.find(".medal").text(i + 1);
+    t.find(".entryName").text(d[nameKey]);
+    var misc = "Getirdiği: " + (d.count || 0) + " · Kan verdi: " + (d.success_count || 0);
+    if (d.unable_count) misc += " · Kan veremedi: " + d.unable_count;
+    t.find(".entryMisc").text(misc);
+    t.find(".entryBar").css("width", pct + "%");
+    t.find(".entryCount").text(opts.ratio ? ("%" + Math.round(pct)) : (d[metric] || 0));
     box.append(t);
   });
 }
-function updateStudentsRankings() { $.getJSON("/site/rankings/students").done(function (d) { renderRank("#rankingList", d, "referrer"); }); }
+function updateStudentsRankings() { $.getJSON("/site/rankings/students").done(function (d) { renderRank("#rankingList", d, "referrer", { bar: "count" }); }); }
+function updateDonorRankings() { $.getJSON("/site/rankings/donors").done(function (d) { renderRank("#donorRankingList", d, "referrer", { ratio: true }); }); }
 function updateSchoolsRankings() { $.getJSON("/site/rankings/schools").done(function (d) { renderRank("#schoolRankingList", d, "school"); }); }
 function updateInSchoolRanking() { var s = $("#inSchoolSelect").val(); if (!s) return; $.getJSON("/site/rankings/in-school", { school: s }).done(function (d) { renderRank("#inSchoolRankingList", d, "referrer"); }); }
 function updateClassesOfSchool() {
@@ -391,28 +360,18 @@ function fmtMin(m) { return m === null || m === undefined ? "-" : (m >= 60 ? Mat
 function loadStats() {
   if (role !== "yonetim") return;
   $.getJSON("/site/stats/overview").done(function (s) {
-    $("#stTotal").text(s.total); $("#stSuccess").text(s.success); $("#stWaiting").text(s.waiting); $("#stFailure").text(s.failure);
+    $("#stTotal").text(s.total); $("#stAll").text(s.allTotal || s.total);
+    $("#stSuccess").text(s.success); $("#stUnable").text(s.unable || 0); $("#stWaiting").text(s.waiting);
+    $("#stExcluded").text(s.excluded || 0);
     $("#stRate").text("%" + s.approvalRate); $("#stAvg").text(fmtMin(s.avgMinutes)); $("#stLongest").text(s.waiting ? fmtMin(s.longestWaitMin) : "-");
-    $("#stTableCount").text(s.tables.length);
     $("#statsUpdated").text("Son güncelleme: " + fmtTime(s.generatedAt) + " · otomatik yenilenir");
 
-    // durum dağılımı
+    // durum dağılımı ("kan vermedi" istatistiğe dahil edilmez)
     var bar = $("#stStatusBar").empty(), legend = $("#stLegend").empty();
-    [["success", "Onaylanan", s.success], ["waiting", "Bekleyen", s.waiting], ["failure", "Reddedilen", s.failure]].forEach(function (x) {
+    [["success", "Kan verdi", s.success], ["unable", "Kan veremedi", s.unable || 0], ["waiting", "Bekleyen", s.waiting]].forEach(function (x) {
       if (s.total) bar.append($("<span>", { class: "seg-" + x[0] }).css("width", (x[2] / s.total * 100) + "%"));
       legend.append($("<span>").append($("<i>", { class: "seg-" + x[0] })).append(document.createTextNode(x[1] + ": " + x[2])));
     });
-
-    // masa bazlı
-    var tb = $("#stTables").empty();
-    if (!s.tables.length) tb.html("<div class='muted'>Henüz masa eklenmedi</div>");
-    else {
-      var tbl = $("<table class='tbl'><thead><tr><th>Masa</th><th>Durum</th><th>Yönlendirilen</th><th>Onaylanan</th><th>Reddedilen</th><th>Son işlem</th></tr></thead><tbody></tbody></table>");
-      s.tables.forEach(function (t) {
-        tbl.find("tbody").append($("<tr>").append($("<td>").append($("<b>").text(t.table))).append($("<td>").text(t.open ? "● Açık" : "Kapalı").css("color", t.open ? "#21683a" : "#69717d")).append($("<td>").text(t.assigned || 0)).append($("<td>").text(t.success)).append($("<td>").text(t.failure)).append($("<td>").text(fmtTime(t.lastAt))));
-      });
-      tb.append(tbl);
-    }
 
     // saatlik
     var hb = $("#stHourly").empty();
@@ -424,10 +383,10 @@ function loadStats() {
         row.find(".hl").text(h.hour);
         row.find(".hbar:eq(0) span").css("width", (h.registered / mx * 100) + "%");
         row.find(".hbar:eq(1) span").css("width", (h.approved / mx * 100) + "%");
-        row.find(".hn").text("Kayıt " + h.registered + " · Onay " + h.approved);
+        row.find(".hn").text("Kayıt " + h.registered + " · Kan verdi " + h.approved);
         hb.append(row);
       });
-      hb.append("<div class='muted' style='margin-top:6px'>Gri: kayıt · Kırmızı: onay</div>");
+      hb.append("<div class='muted' style='margin-top:6px'>Gri: kayıt · Kırmızı: kan verdi · “Kan vermedi” hariç</div>");
     }
     renderRank("#stSchools", s.topSchools, "name");
     renderRank("#stRefs", s.topReferrers, "name");
@@ -444,10 +403,9 @@ $("#logoutBtn").off("click").on("click", function () { post("/site/logout").alwa
 
 // ================= Rol bazlı giriş =================
 function enterMain() {
-  $("#kontrolGiris").hide(); $("#anaEkran").show();
+  $("#anaEkran").show();
   var allowed = ROLE_PAGES[role] || [];
   $(".nav button").each(function () { $(this).toggle(allowed.indexOf($(this).data("page")) !== -1); });
-  if (role === "kontrol") { $("#masaChip").show(); $("#masaChipName").text(currentTable || "-"); $("#masaDegistir").show(); }
   refreshSelects(); if (role !== "kontrol") loadLists().done(migrateReferrers); updateAll();
   showPage(ROLE_HOME[role] || "dashboard");
 }
@@ -456,16 +414,15 @@ setInterval(function () {
   if (!role || $("#anaEkran").is(":hidden")) return;
   if ($("#control").hasClass("active")) loadControl(false);
   if ($("#stats").hasClass("active")) loadStats();
-  if ($("#register").hasClass("active")) loadOpenTables();
   getVisitors(false); updateDashboardStats();
 }, 3000);
 
 $(document).ready(function () {
   $.getJSON("/site/auth/check").done(function (r) {
     if (!r.authenticated) { window.location.href = "login.html"; return; }
-    role = r.role || "kayit"; currentTable = r.table || null;
+    role = r.role || "kayit";
     $("body").addClass("role-" + role);
     $("#roleInfo").text(ROLE_LABEL[role] || role);
-    if (role === "kontrol" && !currentTable) showTableGate(); else enterMain();
+    enterMain();
   }).fail(function () { window.location.href = "login.html"; });
 });

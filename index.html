@@ -14,23 +14,11 @@
       <div class="heart">♥</div>
       <div style="margin-left:16px;text-align:right">
         <div id="roleInfo" class="muted" style="color:#ffe1e6">-</div>
-        <div id="masaChip" class="chip" style="display:none;margin-top:4px">Masa: <span id="masaChipName"></span></div>
-        <button id="masaDegistir" class="btn" style="display:none;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:white;margin-top:6px;margin-right:4px">Masa Değiştir</button><button id="logoutBtn" class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:white;margin-top:6px">Çıkış</button>
+        <button id="logoutBtn" class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:white;margin-top:6px">Çıkış</button>
       </div>
     </div>
   </header>
   <main>
-    <div id="kontrolGiris" style="display:none;max-width:420px;margin:40px auto">
-      <div class="card">
-        <h2 style="margin-top:0">Kontrol Ekibi · Masa Seçimi</h2>
-        <div class="muted" style="margin-bottom:14px">Listeden masanızı seçin. Listede yoksa “Masa Ekle” ile yeni masa oluşturabilirsiniz.</div>
-        <div class="field"><label>Masa</label><select id="masaSelect"><option value="">Masa seçiniz</option></select></div>
-        <button type="button" class="btn" id="masaEkleBtn">+ Masa Ekle</button>
-        <button class="btn primary" id="masaKaydet" style="width:100%;margin-top:14px">Devam Et</button>
-        <div class="err" id="masaErr" style="color:#c32d43;font-size:13px;margin-top:10px;display:none"></div>
-      </div>
-    </div>
-
     <div id="anaEkran" style="display:none">
       <div class="nav" id="nav">
         <button class="active" data-page="dashboard">Genel Bakış</button>
@@ -39,56 +27,64 @@
         <button data-page="control">Kontrol Ekibi</button>
         <button data-page="stats">İstatistikler</button>
         <button data-page="yonetim">Yönetim</button>
-        <button data-page="ranking">Öğrenci Sıralaması</button>
+        <button data-page="ranking">En Çok Bağışçı Getirenler</button>
+        <button data-page="donorRanking">En Çok Kan Veren Bağışçı Getirenler</button>
         <button data-page="schoolRanking">Okul Sıralaması</button>
         <button data-page="inSchoolRanking">Okul İçi Sıralaması</button>
         <button data-page="inClassRanking">Sınıf İçi Sıralama</button>
         <button data-page="betweenClassRanking">Sınıflar Arası Sıralama</button>
       </div>
 
-      <section class="page active" id="dashboard"><div class="intro"><h2>Genel Bakış</h2></div><div class="stats"><div class="card stat"><small>TOPLAM</small><strong id="total">0</strong></div><div class="card stat"><small>TAMAMLANAN</small><strong id="done">0</strong></div><div class="card stat"><small>BEKLEYEN</small><strong id="wait">0</strong></div><div class="card stat"><small>OKUL</small><strong id="schools">0</strong></div></div><div class="card"><h3>Son Kayıtlar</h3><div id="recent"></div></div></section>
+      <section class="page active" id="dashboard"><div class="intro"><h2>Genel Bakış</h2></div><div class="stats"><div class="card stat"><small>TOPLAM</small><strong id="total">0</strong></div><div class="card stat"><small>KAN VERDİ</small><strong id="done">0</strong></div><div class="card stat"><small>KAN VEREMEDİ</small><strong id="unable">0</strong></div><div class="card stat"><small>BEKLEYEN</small><strong id="wait">0</strong></div><div class="card stat"><small>KAN VERMEDİ</small><strong id="notdonated">0</strong></div><div class="card stat"><small>OKUL</small><strong id="schools">0</strong></div></div><div class="card"><h3>Son Kayıtlar</h3><div id="recent"></div></div></section>
 
       <section class="page" id="register">
-        <div class="intro"><h2>Yeni Ziyaretçi Kaydı</h2></div>
-        <div class="notice" id="routeNotice" style="display:none;font-size:18px;font-weight:700"></div>
+        <div class="intro"><h2>Yeni Bağışçı Kaydı</h2><div class="muted">Kaydettikten sonra ekranda çıkan numarayı bağışçıya verin</div></div>
+        <div class="notice giveNo" id="routeNotice" style="display:none">
+          <div><div class="giveNoLabel">BU BAĞIŞÇIYA VERİLECEK NUMARA</div><div class="muted">Kontrol ekibinin listesine düştü</div></div>
+          <strong id="givenNo">-</strong>
+        </div>
         <div class="card">
-          <div class="field"><label>Ziyaretçi Adı Soyadı *</label><input id="name"></div>
+          <div class="field"><label>Bağışçı Adı Soyadı *</label><input id="name"></div>
           <div class="field"><label>Okul / Kurum *</label><select id="schoolSelect"></select><button type="button" class="btn" id="addSchoolBtn" style="margin-top:6px">Yeni Okul/Kurum Ekle</button></div>
           <div class="grid">
             <div class="field"><label>Aracı Öğrenci *</label><select id="referrerSelect"></select><button type="button" class="btn" id="addReferrerBtn" style="margin-top:6px">Yeni Aracı Öğrenci Ekle</button></div>
             <div class="field"><label>Öğrenci Sınıfı</label><select id="classSelect"></select><button type="button" class="btn" id="addClassBtn" style="margin-top:6px">Yeni Sınıf Ekle</button></div>
           </div>
-          <div class="field"><label>Yönlendirilecek Masa</label><select id="tableSelect"><option value="">Otomatik (açık masalara eşit dağıt)</option></select><div class="muted" id="openInfo">-</div></div>
           <div class="field"><label>Not</label><textarea id="note"></textarea></div>
           <button class="btn primary" id="entryFormSubmit">Kaydet</button>
         </div>
       </section>
 
       <section class="page" id="control">
-        <div class="intro"><h2>Kontrol Ekibi</h2><div class="muted">Masa: <b id="masaBilgi"></b> · size yönlendirilen kişiler listelenir</div><label class="muted" style="display:inline-block;margin-top:6px"><input type="checkbox" id="controlAll"> Tüm masaların bekleyenlerini göster</label></div>
-        <div class="card"><h3>Bekleyenler</h3><div id="controlList"></div></div>
+        <div class="intro"><h2>Kontrol Ekibi</h2><div class="muted">Bekleyen tüm kayıtlar tek listede · kayıt no, ad, okul, aracı veya sınıf ile arayın</div></div>
+        <div class="card">
+          <div class="field"><label>Arama</label><input id="controlSearch" placeholder="Kayıt No / ad / okul / aracı / sınıf"></div>
+          <h3>Bekleyenler</h3><div id="controlList"></div>
+        </div>
       </section>
 
       <section class="page" id="stats">
         <div class="intro"><h2>İstatistikler</h2><div class="muted" id="statsUpdated">-</div></div>
         <div class="stats">
-          <div class="card stat"><small>TOPLAM KAYIT</small><strong id="stTotal">0</strong></div>
-          <div class="card stat"><small>ONAYLANAN</small><strong id="stSuccess">0</strong></div>
-          <div class="card stat"><small>BEKLEYEN</small><strong id="stWaiting">0</strong></div>
-          <div class="card stat"><small>REDDEDİLEN</small><strong id="stFailure">0</strong></div>
+          <div class="card stat"><small>TÜM KAYITLAR</small><strong id="stAll">0</strong></div>
+          <div class="card stat"><small>İSTATİSTİĞE DAHİL</small><strong id="stTotal">0</strong></div>
+          <div class="card stat"><small>KAN VERDİ</small><strong id="stSuccess">0</strong></div>
+          <div class="card stat"><small>KAN VEREMEDİ</small><strong id="stUnable">0</strong></div>
         </div>
         <div class="stats" style="margin-top:12px">
-          <div class="card stat"><small>ONAY ORANI</small><strong id="stRate">0%</strong></div>
+          <div class="card stat"><small>BEKLEYEN</small><strong id="stWaiting">0</strong></div>
+          <div class="card stat"><small>KAN VERME ORANI</small><strong id="stRate">0%</strong></div>
           <div class="card stat"><small>ORT. İŞLEM SÜRESİ</small><strong id="stAvg">-</strong></div>
           <div class="card stat"><small>EN UZUN BEKLEYEN</small><strong id="stLongest">-</strong></div>
-          <div class="card stat"><small>MASA SAYISI</small><strong id="stTableCount">0</strong></div>
+        </div>
+        <div class="stats" style="margin-top:12px">
+          <div class="card stat"><small>KAN VERMEDİ (İSTATİSTİK DIŞI)</small><strong id="stExcluded">0</strong></div>
         </div>
         <div class="card"><h3>Durum Dağılımı</h3><div class="statusbar" id="stStatusBar"></div><div class="legend" id="stLegend"></div></div>
-        <div class="card"><h3>Masa Bazlı</h3><div id="stTables"></div></div>
         <div class="card"><h3>Saatlik Dağılım</h3><div id="stHourly"></div></div>
         <div class="grid">
-          <div class="card"><h3>En Çok Bağış Yapan Okullar</h3><div id="stSchools"></div></div>
-          <div class="card"><h3>En Çok Yönlendiren Öğrenciler</h3><div id="stRefs"></div></div>
+          <div class="card"><h3>En Çok Kan Veren Okullar</h3><div id="stSchools"></div></div>
+          <div class="card"><h3>En Çok Kan Veren Bağışçı Getirenler</h3><div id="stRefs"></div></div>
         </div>
       </section>
 
@@ -99,7 +95,8 @@
       </section>
 
       <section class="page" id="records"><div class="intro"><h2>Kayıtlar</h2><div class="muted" id="recordCount"></div></div><div class="card"><div class="grid"><div class="field"><label>Arama</label><input id="search"></div><div class="field"><label>Okula Göre</label><select id="filterSchool"><option value="">Tümü</option></select></div></div><div id="recordList"></div></div></section>
-      <section class="page" id="ranking"><div class="intro"><h2>Öğrenci Sıralaması</h2></div><div class="card"><div id="rankingList"></div></div></section>
+      <section class="page" id="ranking"><div class="intro"><h2>En Çok Bağışçı Getirenler</h2><div class="muted">Kan veremedi dahil · getirdiği toplam bağışçı sayısına göre</div></div><div class="card"><div id="rankingList"></div></div></section>
+      <section class="page" id="donorRanking"><div class="intro"><h2>En Çok Kan Veren Bağışçı Getirenler</h2><div class="muted">Çubuk: getirdiklerinin ne kadarı kan verdi · kan veremedi de listeye dahil</div></div><div class="card"><div id="donorRankingList"></div></div></section>
       <section class="page" id="schoolRanking"><div class="intro"><h2>Okul Sıralaması</h2></div><div class="card"><div id="schoolRankingList"></div></div></section>
       <section class="page" id="inSchoolRanking"><div class="intro"><h2>Okul İçi Sıralama</h2></div><div class="field"><select id="inSchoolSelect"></select></div><div class="card"><div id="inSchoolRankingList"></div></div></section>
       <section class="page" id="inClassRanking"><div class="intro"><h2>Sınıf İçi Sıralama</h2></div><div class="field"><select id="inClassRankingSchoolSelect"></select><select id="inClassRankingClassSelect"></select></div><div class="card"><div id="inClassRankingList"></div></div></section>
@@ -108,8 +105,8 @@
     <footer>♥ Sincan Anadolu Lisesi · Kan Bağışı Sistemi</footer>
   </main>
   <div id="templates" hidden="">
-    <div class="entry recordEntry"><div class="row"><div class="grow"><h3 class="entryName">-</h3><div class="muted entryMisc">-</div><div class="muted">Not: <span class="entryNote"></span></div><div class="muted">Masa: <span class="entryTable"></span> | İşleyen: <span class="entryApprovedBy"></span></div></div><div><span class="badge">-</span><select class="entryStatus" style="margin-left:6px"><option value="waiting">Beklemede</option><option value="success">Onaylandı</option><option value="failure">Reddedildi</option></select><button class="btn danger entryDelete" style="margin-left:4px">Sil</button></div></div></div>
-    <div class="entry controlEntry"><div class="row"><div class="grow"><h3 class="entryName">-</h3><div class="muted entryMisc">-</div><div class="muted">Not: <span class="entryNote"></span> | Sınıf: <span class="entryClass"></span></div><div style="margin-top:6px"><label><input type="checkbox" class="chkUygun"> Kan vermeye uygun</label><label class="verdiWrap" style="display:none;margin-left:14px"><input type="checkbox" class="chkVerdi"> Kan verdi</label></div></div><div><div class="muted" style="margin-bottom:6px">Masa: <b class="entryMasa"></b></div><button class="btn primary controlAssign">Onayla</button><button class="btn danger controlReject" style="margin-left:4px">Reddet</button></div></div></div>
+    <div class="entry recordEntry"><div class="row"><div class="grow"><h3 class="entryName">-</h3><div class="muted entryMisc">-</div><div class="muted">Not: <span class="entryNote"></span></div><div class="muted">İşleyen: <span class="entryApprovedBy"></span></div></div><div><span class="badge">-</span><select class="entryStatus" style="margin-left:6px"><option value="waiting">Beklemede</option><option value="success">Kan verdi</option><option value="unable">Kan veremedi</option><option value="failure">Kan vermedi</option></select><button class="btn danger entryDelete" style="margin-left:4px">Sil</button></div></div></div>
+    <div class="entry controlEntry"><div class="row"><div class="entryNo"><small>KAYIT NO</small><b class="entryId">0</b></div><div class="grow"><h3 class="entryName">-</h3><div class="muted entryMisc">-</div><div class="muted">Not: <span class="entryNote"></span></div></div><div class="controlActions"><button class="btn ok controlDone">Kan verdi</button><button class="btn warn controlUnable">Kan veremedi</button><button class="btn danger controlReject">Kan vermedi</button></div></div></div>
     <div class="rankEntry"><div class="row" style="align-items:center"><div class="medal" style="width:24px;font-weight:800">1</div><div class="grow"><h3 class="entryName">-</h3><div class="muted entryMisc">-</div></div><div style="width:180px"><div style="height:7px;background:#eee;border-radius:6px;overflow:hidden"><div class="entryBar" style="height:100%;background:#a7192d"></div></div></div><div style="width:50px;text-align:right;font-weight:800" class="entryCount">0</div></div></div>
   </div>
   <div id="modal" class="modal" style="display:none">
@@ -121,6 +118,6 @@
     </div>
   </div>
   <script src="jquery.min.js"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
